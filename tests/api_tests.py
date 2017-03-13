@@ -20,18 +20,30 @@ class TestAPI(unittest.TestCase):
 
         # Set up the tables in the database
         Base.metadata.create_all(engine)
-        
-#    def test_get_empty_posts(self):
-#        """ Getting posts from an empty database """
-#        response = self.client.get("/api/posts",
-#            headers=[("Accept", "application/json")]
-#        )
-#
-#        self.assertEqual(response.status_code, 200)
-#        self.assertEqual(response.mimetype, "application/json")
-#
-#        data = json.loads(response.data.decode("ascii"))
-#        self.assertEqual(data, [])
+    
+    def test_get_empty_posts(self):
+        """ Getting posts from an empty database """
+        response = self.client.get("/api/posts",
+            headers=[("Accept", "application/json")]
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.mimetype, "application/json")
+
+        data = json.loads(response.data.decode("ascii"))
+        self.assertEqual(data, [])
+
+    def test_unsupported_accept_header(self):
+        response = self.client.get("/api/posts",
+            headers=[("Accept", "application/xml")]
+        )
+
+        self.assertEqual(response.status_code, 406)
+        self.assertEqual(response.mimetype, "application/json")
+
+        data = json.loads(response.data.decode("ascii"))
+        self.assertEqual(data["message"],
+                         "Request must accept application/json data")
         
     def test_get_posts(self):
         """ Getting posts from a populated database """
@@ -41,7 +53,7 @@ class TestAPI(unittest.TestCase):
         session.add_all([postA, postB])
         session.commit()
         
-        response = self.client.get("/api/posts")
+        response = self.client.get("/api/posts",  headers=[("Accept", "application/json")])
 
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.mimetype, "application/json")
@@ -83,45 +95,6 @@ class TestAPI(unittest.TestCase):
 
         data = json.loads(response.data.decode("ascii"))
         self.assertEqual(data["message"], "Could not find post with id 1")
-        
-    def test_unsupported_accept_header(self):
-        response = self.client.get("/api/posts",
-            headers=[("Accept", "application/xml")]
-        )
-
-        self.assertEqual(response.status_code, 406)
-        self.assertEqual(response.mimetype, "application/json")
-
-        data = json.loads(response.data.decode("ascii"))
-        self.assertEqual(data["message"],
-                         "Request must accept application/json data")
-                         
-    def test_delete_single_post(self):
-        postA = models.Post(title="Example Post A", body="Delete this")
-        postB = models.Post(title="Example Post B", body="Don't delete this")
-
-        session.add_all([postA, postB])
-        session.commit()
-
-        response = self.client.get(
-            "/api/posts/{}".format(postA.id),
-            headers=[("Accept", "application/json")])
-
-        session.delete(postA)
-        session.commit()
-
-        self.assertEqual(response.status_code, 200)
-        self.assertEqual(response.mimetype, "application/json")
-
-        # data = json.loads(response.data)
-
-        posts = session.query(models.Post).all()
-        self.assertEqual(len(posts), 1)
-
-        postB = posts[0]
-        self.assertEqual(postB.title, "Example Post B")
-        self.assertEqual(postB.body, "Don't delete this")
-        # find a way to assert postA is not in posts
 
     def tearDown(self):
         """ Test teardown """
