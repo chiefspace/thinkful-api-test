@@ -95,6 +95,32 @@ class TestAPI(unittest.TestCase):
 
         data = json.loads(response.data.decode("ascii"))
         self.assertEqual(data["message"], "Could not find post with id 1")
+        
+    def test_delete_single_post(self):
+        postA = models.Post(title="Example Post A", body="Delete this")
+        postB = models.Post(title="Example Post B", body="Don't delete this")
+
+        session.add_all([postA, postB])
+        session.commit()
+
+        response = self.client.get(
+            "/api/posts/{}".format(postA.id),
+            headers=[("Accept", "application/json")])
+
+        session.delete(postA)
+        session.commit()
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.mimetype, "application/json")
+
+        # data = json.loads(response.data)
+
+        posts = session.query(models.Post).all()
+        self.assertEqual(len(posts), 1)
+
+        postB = posts[0]
+        self.assertEqual(postB.title, "Example Post B")
+        self.assertEqual(postB.body, "Don't delete this")
 
     def tearDown(self):
         """ Test teardown """
